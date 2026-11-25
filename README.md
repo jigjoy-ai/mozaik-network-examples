@@ -22,17 +22,15 @@ npm install
 cp .env.example .env    # then fill it in
 ```
 
-All the examples join one network: the one whose invite link is in `MOZAIK_INVITE`. Use one you were sent, or make one:
+All the examples join one network. Make it in the [JigJoy app](https://app.jigjoy.ai), copy its invite link, and put it in `.env`:
 
 ```bash
-# On the hosted network, with a Mozaik Cloud API key in MOZAIK_API_KEY
-npm run network
-
-# Or on a network you run yourself (npm start in mozaik-network), no key needed
-NETWORK_ORIGIN=http://localhost:3000 npm run network
+MOZAIK_INVITE="https://network.app.jigjoy.ai#nt_..."
 ```
 
-It prints a line `MOZAIK_INVITE=…`: put it in `.env`. Whoever has the link can join, and their messages are counted against the network's owner.
+Keep the quotes: without them, everything after the `#` is read as a comment, and the invite is lost.
+
+Whoever has the link can join, and their messages are counted against the network's owner.
 
 To use another model, set `MODEL` to one of `@jigjoy/mozaik-agent`'s models (like `gpt-5.5` or `gemini-3.5-flash`) and that provider's key.
 

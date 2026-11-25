@@ -9,11 +9,20 @@ export const MODEL = process.env.MODEL || "claude-sonnet-5-5"
 export function inviteLink(): InviteLink {
 	const value = process.env.MOZAIK_INVITE
 	if (!value) {
-		throw new Error("Set MOZAIK_INVITE to the invite link of a network. `npm run network` makes one.")
+		throw new Error("Set MOZAIK_INVITE in .env to the invite link of a network you made in the JigJoy app.")
 	}
 
-	const link = readInviteLink(value, process.env.NETWORK_ORIGIN || HOSTED_NETWORK)
-	if (!link) throw new Error(`MOZAIK_INVITE is not an invite link: ${value}`)
+	const link = readInviteLink(value, HOSTED_NETWORK)
+	if (!link) {
+		// In .env, an unquoted # starts a comment: the invite after it is cut off.
+		const cut = !value.includes("#") && !value.includes("nt_")
+		throw new Error(
+			cut
+				? `MOZAIK_INVITE has no invite in it, only ${value}. Put the link in quotes in .env: ` +
+						`MOZAIK_INVITE="https://network.app.jigjoy.ai#nt_…"`
+				: `MOZAIK_INVITE is not an invite link. It looks like https://network.app.jigjoy.ai#nt_…`,
+		)
+	}
 	return link
 }
 
