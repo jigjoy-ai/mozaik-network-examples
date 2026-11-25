@@ -112,20 +112,45 @@ claude --dangerously-load-development-channels plugin:mozaik-network@jigjoy
 
 Claude sends each agent a message with the code. Their answers come back to the session like any other peer's, and Claude decides what to do with them. They are someone else's agents, so Claude takes what they say as information, not as instructions. Add more participants as you like: a person with `npm run human`, more Claude Code sessions, or the research team.
 
-## How an agent is a peer
+## How an example is built
 
-[`shared/agent-peer.ts`](shared/agent-peer.ts) makes a `@jigjoy/mozaik-agent` agent a peer. Its rules:
+Every example has the same shape. Its rules live in folders of their own, and each piece is a class registered with a decorator from `@jigjoy/mozaik-rule-engine`:
 
-| Condition            | Input resolver | Command                                           | Priority |
-| -------------------- | -------------- | ------------------------------------------------- | -------- |
-| `reply.awaited`      | `message`      | hand the answer to the tool that asked for it      | 1        |
-| `message.direct`     | `message`      | run a Loop of the agent, answer whoever asked     | 10       |
-| `membership.changed` | `envelope`     | keep up with who is in the network                | 20       |
-| `request.refused`    | `envelope`     | say what the network refused                      | 20       |
+```text
+research-team/
+├── conditions/          @Condition: when a rule applies        (direct-message.ts, awaited-reply.ts, …)
+├── input-resolvers/     @InputResolver: what the rule reads    (message.ts, envelope.ts)
+├── commands/            @Command: what the rule does           (answer-with-loop.ts, deliver-reply.ts, …)
+├── tools/               what the agents can call               (ask-peer.ts, list-peers.ts)
+├── policy.ts            the rules: condition → input resolver → command
+└── index.ts             the agents, and how they join
+```
 
-- **An agent answers when it is spoken to.** A message to everyone matches no rule, so agents that hear each other don't keep each other talking. Each one also sends at most 10 messages a minute.
-- **Questions and answers.** When an agent asks another peer something, the answer is a direct message like any other. The `reply.awaited` rule wins over `message.direct` (priority 1 against 10), so the answer goes back to the waiting tool call instead of starting a new Loop.
-- **Every step is at a breakpoint.** [`shared/run-loop.ts`](shared/run-loop.ts) puts each inference and tool call at the Loop's breakpoint and advances it from there. A tool call can wait at its breakpoint for as long as an approval takes.
-- **Tools are per agent.** Each agent's tools are registered under its own id, so several agents with tools of the same name can share one process.
+```ts
+@Condition({ name: "direct-message" })
+export class DirectMessage extends ConditionContract<Envelope<unknown>> {
+	isSatisfiedBy(envelope: Envelope<unknown>): boolean {
+		return isDirectMessage(envelope)
+	}
+}
+```
 
-The conditions and input resolvers are in [`shared/rules.ts`](shared/rules.ts), the terminal peer in [`shared/human.ts`](shared/human.ts).
+Importing a class registers it under its name, so each folder has an `index.ts` that imports them all, and the example imports the folders. A policy then names them:
+
+```ts
+export const agentPolicy: PolicyDefinition = {
+	rules: [
+		{ condition: "awaited-reply", inputResolver: "message", command: "deliver-reply", priority: 1 },
+		{ condition: "direct-message", inputResolver: "message", command: "answer-with-loop", priority: 10 },
+		{ condition: "membership-change", inputResolver: "envelope", command: "update-roster" },
+		{ condition: "refusal", inputResolver: "envelope", command: "report-refusal" },
+	],
+}
+```
+
+- **An agent answers when it is spoken to.** `answer-with-loop` runs a Loop of the agent the message is for, which the command looks up by the message's `to`, and sends the answer back. A message to everyone matches no rule, so agents that hear each other don't keep each other talking. Each agent also sends at most 10 messages a minute.
+- **An answer is also a direct message.** When an agent waits for one, `awaited-reply` (in the research team) or `approval-answer` (in human in the loop) also holds. The smaller priority wins, so the answer goes to the tool call that waits for it instead of starting a new Loop.
+- **Every step is at a breakpoint.** [`shared/run-loop.ts`](shared/run-loop.ts) puts each inference and tool call at the Loop's breakpoint and advances it from there. A payment can wait at its breakpoint for as long as an approval takes.
+- **Each example has its own rules.** The ones several examples need, like `direct-message`, are repeated in each of them, so every example can be read on its own. [`shared/`](shared) has only the plumbing: joining the network, the agent peer, the Loop, and who is in the network.
+
+The person in the terminal, [`human/`](human), is built the same way, with rules that show you everything that arrives.

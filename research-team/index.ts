@@ -10,55 +10,54 @@
 // Claude Code session on the same network.
 import { initAgentModule } from "@jigjoy/mozaik-agent"
 import { AgentPeer } from "../shared/agent-peer"
-import { leaveOnExit } from "../shared/env"
-import { askPeer, listPeers } from "../shared/tools"
-import { Visitor } from "../shared/visitor"
+import { leaveOnExit, run } from "../shared/env"
+import "./commands"
+import "./conditions"
+import "./input-resolvers"
+import { agentPolicy } from "./policy"
+import { askPeer } from "./tools/ask-peer"
+import { listPeers } from "./tools/list-peers"
+import { askOnce } from "./visitor"
 
-async function main() {
+run(async () => {
 	initAgentModule()
 
-	const team = [
-		await AgentPeer.join({
-			name: "researcher",
-			instruction:
-				"You are a researcher. You are asked for the facts about a topic. Answer with the key facts, " +
-				"trade-offs and numbers that matter, as a short list. Say plainly what you are not sure of.",
-		}),
-		await AgentPeer.join({
-			name: "critic",
-			instruction:
-				"You are a critic. You are sent a draft answer and the question it answers. Point out what is " +
-				"wrong, missing or unsupported, most important first, in at most five points. Don't rewrite it.",
-		}),
-		await AgentPeer.join({
-			name: "lead",
-			instruction:
-				"You lead a small research team on the network. When you are asked a question: " +
-				"1. ask the researcher for the facts you need, with ask_peer; " +
-				"2. write a draft answer from them; " +
-				"3. send the critic the question and the draft, with ask_peer; " +
-				"4. answer with the draft revised by what the critic said, in at most 200 words. " +
-				"Each peer sees only what you send it, so include what it needs.",
-			tools: [askPeer, listPeers],
-		}),
-	]
+	const researcher = await AgentPeer.join({
+		name: "researcher",
+		policy: agentPolicy,
+		instruction:
+			"You are a researcher. You are asked for the facts about a topic. Answer with the key facts, " +
+			"trade-offs and numbers that matter, as a short list. Say plainly what you are not sure of.",
+	})
+	const critic = await AgentPeer.join({
+		name: "critic",
+		policy: agentPolicy,
+		instruction:
+			"You are a critic. You are sent a draft answer and the question it answers. Point out what is " +
+			"wrong, missing or unsupported, most important first, in at most five points. Don't rewrite it.",
+	})
+	const lead = await AgentPeer.join({
+		name: "lead",
+		policy: agentPolicy,
+		tools: [askPeer, listPeers],
+		instruction:
+			"You lead a small research team on the network. When you are asked a question: " +
+			"1. ask the researcher for the facts you need, with ask_peer; " +
+			"2. write a draft answer from them; " +
+			"3. send the critic the question and the draft, with ask_peer; " +
+			"4. answer with the draft revised by what the critic said, in at most 200 words. " +
+			"Each peer sees only what you send it, so include what it needs.",
+	})
+	const team = [researcher, critic, lead]
 	console.log(`The team joined the network: ${team.map((agent) => agent.name).join(", ")}.`)
 
 	const question = process.argv.slice(2).join(" ").trim()
 	if (!question) {
 		console.log("Ask the lead from `npm run human` (type `@lead your question`). Ctrl+C to stop.")
-		return leaveOnExit(() => Promise.all(team.map((agent) => agent.leave())).then(() => {}))
+		return leaveOnExit(team)
 	}
 
-	const you = await Visitor.join("you")
-	const answer = await you.ask("lead", question)
-	console.log(`\n${answer}\n`)
-
-	await Promise.all([you, ...team].map((peer) => peer.leave()))
+	console.log(`\n${await askOnce("lead", question)}\n`)
+	await Promise.all(team.map((agent) => agent.leave()))
 	process.exit(0)
-}
-
-main().catch((error) => {
-	console.error(error instanceof Error ? error.message : error)
-	process.exit(1)
 })

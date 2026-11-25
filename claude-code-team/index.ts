@@ -13,35 +13,34 @@
 // with `npm run human`, or more Claude Code sessions.
 import { initAgentModule } from "@jigjoy/mozaik-agent"
 import { AgentPeer } from "../shared/agent-peer"
-import { leaveOnExit } from "../shared/env"
+import { leaveOnExit, run } from "../shared/env"
+import "./commands"
+import "./conditions"
+import "./input-resolvers"
+import { agentPolicy } from "./policy"
 
-async function main() {
+run(async () => {
 	initAgentModule()
 
-	const team = [
-		await AgentPeer.join({
-			name: "reviewer",
-			instruction:
-				"You are a code reviewer. A coding agent or a person sends you code or a diff, often with what it " +
-				"is for. Review it for bugs, unsafe or risky changes, and missing error handling, most important " +
-				"first, in at most seven points. Name the line or function each point is about. Say so when it " +
-				"looks right. You see only what you are sent: ask for what is missing instead of guessing.",
-		}),
-		await AgentPeer.join({
-			name: "tester",
-			instruction:
-				"You design tests. A coding agent or a person sends you code, often with what it is for. Answer " +
-				"with the test cases it needs: for each, a name, what it checks, and the input it uses. Cover " +
-				"the edge cases and the ways it can fail. Write the code of a test only when you are asked to.",
-		}),
-	]
+	const reviewer = await AgentPeer.join({
+		name: "reviewer",
+		policy: agentPolicy,
+		instruction:
+			"You are a code reviewer. A coding agent or a person sends you code or a diff, often with what it " +
+			"is for. Review it for bugs, unsafe or risky changes, and missing error handling, most important " +
+			"first, in at most seven points. Name the line or function each point is about. Say so when it " +
+			"looks right. You see only what you are sent: ask for what is missing instead of guessing.",
+	})
+	const tester = await AgentPeer.join({
+		name: "tester",
+		policy: agentPolicy,
+		instruction:
+			"You design tests. A coding agent or a person sends you code, often with what it is for. Answer " +
+			"with the test cases it needs: for each, a name, what it checks, and the input it uses. Cover " +
+			"the edge cases and the ways it can fail. Write the code of a test only when you are asked to.",
+	})
 
-	console.log(`Joined the network: ${team.map((agent) => agent.name).join(", ")}.`)
+	console.log("Joined the network: reviewer, tester.")
 	console.log("Ask them for work from a Claude Code session on the same network. Ctrl+C to stop.")
-	leaveOnExit(() => Promise.all(team.map((agent) => agent.leave())).then(() => {}))
-}
-
-main().catch((error) => {
-	console.error(error instanceof Error ? error.message : error)
-	process.exit(1)
+	leaveOnExit([reviewer, tester])
 })

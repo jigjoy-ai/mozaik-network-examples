@@ -16,28 +16,30 @@
 // or a Claude Code session that is told what to approve.
 import { initAgentModule } from "@jigjoy/mozaik-agent"
 import { AgentPeer } from "../shared/agent-peer"
-import { leaveOnExit } from "../shared/env"
-import { approve, tools } from "./accountant"
+import { leaveOnExit, run } from "../shared/env"
+import { approve } from "./approve"
+import "./commands"
+import "./conditions"
+import "./input-resolvers"
+import { accountantPolicy } from "./policy"
+import { listInvoices } from "./tools/list-invoices"
+import { payInvoice } from "./tools/pay-invoice"
 
-async function main() {
+run(async () => {
 	initAgentModule()
 
 	const accountant = await AgentPeer.join({
 		name: "accountant",
+		policy: accountantPolicy,
+		tools: [listInvoices, payInvoice],
+		approve,
 		instruction:
 			"You are the accountant of a small company. You look after its invoices: you can list them and pay them. " +
 			"Every payment needs a person's approval, which pay_invoice asks for by itself: don't ask for it " +
 			"yourself. When a payment is declined, don't try it again. Finish with what you paid and what you didn't.",
-		tools,
-		approve,
 	})
 
 	console.log(`The accountant joined the network. Payments are approved by ${process.env.APPROVER || "whoever asks for them"}.`)
 	console.log("Talk to it from `npm run human` (type `@accountant pay what is overdue`). Ctrl+C to stop.")
-	leaveOnExit(() => accountant.leave())
-}
-
-main().catch((error) => {
-	console.error(error instanceof Error ? error.message : error)
-	process.exit(1)
+	leaveOnExit([accountant])
 })

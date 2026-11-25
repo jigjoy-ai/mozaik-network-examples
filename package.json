@@ -7,7 +7,7 @@
 		"node": ">=22"
 	},
 	"scripts": {
-		"human": "tsx shared/human.ts",
+		"human": "tsx human/index.ts",
 		"research-team": "tsx research-team/index.ts",
 		"human-in-the-loop": "tsx human-in-the-loop/index.ts",
 		"claude-code-team": "tsx claude-code-team/index.ts",

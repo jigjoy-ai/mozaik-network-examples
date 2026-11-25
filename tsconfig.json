@@ -11,5 +11,5 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true
 	},
-	"include": ["shared", "research-team", "human-in-the-loop", "claude-code-team"]
+	"include": ["shared", "human", "research-team", "human-in-the-loop", "claude-code-team"]
 }
