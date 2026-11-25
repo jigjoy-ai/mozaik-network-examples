@@ -1,0 +1,28 @@
+{
+	"name": "mozaik-network-examples",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Multi-agent systems on a Mozaik network: agents, people and Claude Code sessions working together as peers.",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"network": "tsx shared/create-network.ts",
+		"human": "tsx shared/human.ts",
+		"research-team": "tsx research-team/index.ts",
+		"human-in-the-loop": "tsx human-in-the-loop/index.ts",
+		"claude-code-team": "tsx claude-code-team/index.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@jigjoy/mozaik-agent": "^0.0.1",
+		"@jigjoy/mozaik-network": "^0.1.0",
+		"@jigjoy/mozaik-rule-engine": "^0.0.2",
+		"dotenv": "^17.4.1"
+	},
+	"devDependencies": {
+		"@types/node": "^22.19.0",
+		"tsx": "^4.23.15",
+		"typescript": "^5.9.3"
+	}
+}
